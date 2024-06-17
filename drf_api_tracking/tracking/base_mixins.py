@@ -1,4 +1,6 @@
 from django.utils.timezone import now
+import ipaddress
+
 
 class BaseLoggingMixin:
     '''
@@ -49,4 +51,32 @@ class BaseLoggingMixin:
             age karbar az proxy ya vpn estefade nakone, REMOTE_ADDR  va HTTP_X_FORWARDED_FOR  baaham dige barabaar mishan.
         '''
         
-        ipaddr=request.META.get('HTTP_X_FORWARDED_FOR' , None)
+        ipaddr=request.META.get('HTTP_X_FORWARDED_FOR',None)   # boro begard ag in httpe boodesh berizesh too ipaddr ag nabodesh ham bejash none bezae
+        if ipaddr:                                             # age boodesh oon moghe:        
+            ipaddr=ipaddr.split(',')[0]                        # hamontor k ghablan goftfim in headere 'HTTP_X_FORWARDED_FOR' 
+                                                               # ham ip khode karbaro aval neshon mide bad ip on proxy hai k bhshon
+                                                               # vasle. va hamontor k goftim ba comma joda mishan hala [0] yani indexe
+                                                               # sefrom yani item aval k mishe ip khode karbar ro mikhad biare
+        else:
+            ipaddr=request.META.get('REMOTE_ADDR', '').splite(',')[0]   # dar soorati k tooye header ha 'HTTP_X_FORWARDED_FOR' ro nadashti
+                                                                        # begard donbale 'REMOTE_ADDR va age onam nadidi y string khali bargardon
+                                                                        
+        possibles=(ipaddr.lstrip('[')).split(']')[0], ipaddr.split(':')[0]               
+        '''
+            in posiibles bekhatere ineke bazi vaghtga ip be y shekli khasi be ma bargardoonde mishe.
+            masalan__>   [<ipv6 address>]     ya in sheklie__>      [<ipv6 address>]:port   vaseinke 
+            ip ro dorost va bedone hichi save esh konim tooye database,az line bala posiibles estefde
+            mikonim.
+        '''
+        
+        for addr in possibles:
+            try:
+                return str(ipaddress.ip_address(addr))         
+            except:
+                pass                                 
+            
+            
+    """
+        HTTP_X_FORWARDED_FOR ----->  proxy=>   real_ip , 1st_proxy_ip , 2nd_proxy_ip , last_proxy_id
+        REMOTE_ADDR ----->   proxy=>   ip proxy
+    """       
