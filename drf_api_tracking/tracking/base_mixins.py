@@ -4,9 +4,12 @@ from tracking.app_settings import app_settings
 import traceback
 import logging
 
+
+
+logger=logging.getLogger(__name__)         #vase neveshtane log. bad ghabl az inke self.handle_log() ejra beshe y try except mizarim ag exception i etefagh oftad tooye log file betone zakhirash bokone.
+
 class BaseLoggingMixin:
     
-    logger=logging.getLogger(__name__)         #vase neveshtane log. bad ghabl az inke self.handle_log() ejra beshe y try except mizarim ag exception i etefagh oftad tooye log file betone zakhirash bokone.
     logging_methods='__all__'                  #vaseye entekhabe noe method e http
     
     '''
@@ -69,7 +72,7 @@ class BaseLoggingMixin:
             try:
                 self.handle_log()
             except Exception:
-                logg    
+                logger.exception('Loggin API call raise  exception.')
         return response
     
     
