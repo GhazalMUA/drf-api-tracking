@@ -2,10 +2,13 @@ from django.utils.timezone import now
 import ipaddress
 from tracking.app_settings import app_settings
 import traceback
+import logging
 
 class BaseLoggingMixin:
     
-    logging_methods='__all__'
+    logger=logging.getLogger(__name__)         #vase neveshtane log. bad ghabl az inke self.handle_log() ejra beshe y try except mizarim ag exception i etefagh oftad tooye log file betone zakhirash bokone.
+    logging_methods='__all__'                  #vaseye entekhabe noe method e http
+    
     '''
         method initial ke in zire yeki ag method hay aslie class e APIView
         hast ke ghabl az inke request ersal beshe ejra mishe; ma omadim
@@ -63,7 +66,10 @@ class BaseLoggingMixin:
                 'response_ms':self._get_response_ms(),
                 'status_code':response.status_code,
             })
-            self.handle_log()
+            try:
+                self.handle_log()
+            except Exception:
+                logg    
         return response
     
     
@@ -174,3 +180,10 @@ class BaseLoggingMixin:
         return (
             self.logging_methods=='__all__' or request.method in self.logging_methods
         )
+    '''
+        vaghti kasi az module base_mixins.py dare estefade mikone khodesh mitone biad in method should_log()
+        ro override bokone va vasash har sharti k doost dare ro bezare.
+    '''    
+    
+    
+    
