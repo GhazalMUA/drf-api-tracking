@@ -1,10 +1,11 @@
 from django.utils.timezone import now
 import ipaddress
 from tracking.app_settings import app_settings
-import datetime
-
+import traceback
 
 class BaseLoggingMixin:
+    
+    logging_methods='__all__'
     '''
         method initial ke in zire yeki ag method hay aslie class e APIView
         hast ke ghabl az inke request ersal beshe ejra mishe; ma omadim
@@ -25,22 +26,44 @@ class BaseLoggingMixin:
         self.log={'requested_at':now(),}
         return super().initial(request, *args, **kwargs)
     
+    
+    def handle_exception(self, exc):
+        """
+        in method male khode APIView hastesh k ma overridesh mikonim superesho seda mizanim
+        vaa tooye dele in function khata haro migiiirim. gereftanae matne khata ha ham ba
+        module Traceback anjam mishe. module traceback khatayi k be shoma namayesh dade mishe
+        ro dar ekhtiare shoma gharar mide.
+        in module method hay mokhtalefi dare vali ma miaym az method `format.exc` estefade 
+        mikonim k khata ro b shekle string b shoma namayesh mide.
+        
+        ye method hm minevismim be esme should_log() ke age true bargardoond log etelaat karbar, 
+        zakhire beshe va ag false bargardoond save nashan. masalan moshakhas konim ag error balaye 
+        400 bod biad log ro save kone ya age method i k karbar baahaash miad post bod log ro save
+        kone ya harchize digei....
+        
+        """
+        response= super().handle_exception(exc)
+        self.log['errors']=traceback.format_exc()
+        return response
+    
+    
     def finalize_response(self, request, response, *args, **kwargs):
         response= super().finalize_response(request, response, *args, **kwargs)
-        user=self._get_user(request)
-        self.log.update({
-            'remote_addr': self._get_ip_address(request) ,
-            'view':self._get_view_name(request),
-            'view_method' : self._get_view_method(request),
-            'path':self._get_path(request),
-            'user': user,
-            'host': request.get_host(),     #khode request e django method get_host() ro dare.
-            'method': request.method,
-            'username_persistent': user.get_username() if user else 'Anonymous',
-            'response_ms':self._get_response_ms(),
-            'status_code':response.status_code,
-        })
-        self.handle_log()
+        if self.should_log(request,response):
+            user=self._get_user(request)
+            self.log.update({
+                'remote_addr': self._get_ip_address(request) ,
+                'view':self._get_view_name(request),
+                'view_method' : self._get_view_method(request),
+                'path':self._get_path(request),
+                'user': user,
+                'host': request.get_host(),     #khode request e django method get_host() ro dare.
+                'method': request.method,
+                'username_persistent': user.get_username() if user else 'Anonymous',
+                'response_ms':self._get_response_ms(),
+                'status_code':response.status_code,
+            })
+            self.handle_log()
         return response
     
     
@@ -144,3 +167,10 @@ class BaseLoggingMixin:
         response_timedelta=now() - self.log['requested_at']
         response_ms= int(response_timedelta.total_seconds()*1000)      
         return max(response_ms,0)  
+    
+    
+    
+    def should_log(self,request,response):
+        return (
+            self.logging_methods=='__all__' or request.method in self.logging_methods
+        )
