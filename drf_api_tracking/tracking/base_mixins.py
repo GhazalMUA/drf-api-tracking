@@ -1,5 +1,7 @@
 from django.utils.timezone import now
 import ipaddress
+from tracking.app_settings import app_settings
+import datetime
 
 
 class BaseLoggingMixin:
@@ -25,9 +27,19 @@ class BaseLoggingMixin:
     
     def finalize_response(self, request, response, *args, **kwargs):
         response= super().finalize_response(request, response, *args, **kwargs)
-        self.log.update(
-            {'remote_addr':self._get_ip_address(request)} ,
-        )
+        user=self._get_user(request)
+        self.log.update({
+            'remote_addr': self._get_ip_address(request) ,
+            'view':self._get_view_name(request),
+            'view_method' : self._get_view_method(request),
+            'path':self._get_path(request),
+            'user': user,
+            'host': request.get_host(),     #khode request e django method get_host() ro dare.
+            'method': request.method,
+            'username_persistent': user.get_username() if user else 'Anonymous',
+            'response_ms':self._get_response_ms(),
+            'status_code':response.status_code,
+        })
         self.handle_log()
         return response
     
@@ -58,7 +70,7 @@ class BaseLoggingMixin:
                                                                # vasle. va hamontor k goftim ba comma joda mishan hala [0] yani indexe
                                                                # sefrom yani item aval k mishe ip khode karbar ro mikhad biare
         else:
-            ipaddr=request.META.get('REMOTE_ADDR', '').splite(',')[0]   # dar soorati k tooye header ha 'HTTP_X_FORWARDED_FOR' ro nadashti
+            ipaddr=request.META.get('REMOTE_ADDR', '').split(',')[0]   # dar soorati k tooye header ha 'HTTP_X_FORWARDED_FOR' ro nadashti
                                                                         # begard donbale 'REMOTE_ADDR va age onam nadidi y string khali bargardon
                                                                         
         possibles=(ipaddr.lstrip('[')).split(']')[0], ipaddr.split(':')[0]               
@@ -73,10 +85,62 @@ class BaseLoggingMixin:
             try:
                 return str(ipaddress.ip_address(addr))         
             except:
-                pass                                 
-            
-            
+                pass   
+                                          
     """
         HTTP_X_FORWARDED_FOR ----->  proxy=>   real_ip , 1st_proxy_ip , 2nd_proxy_ip , last_proxy_id
         REMOTE_ADDR ----->   proxy=>   ip proxy
-    """       
+    """               
+            
+   
+    def _get_view_name(self,request):
+        method = request.method.lower()    #getting http method
+        try:
+            attribute=getattr(self,method)     #begard tooye self etelaate marboot be on method khas ro baram biar masalan aln
+                                               #vsase in barname ino mide ag ino ejra koni:
+                                               # <bound method HomeAPIView.get of <tracking.views.HomeAPIView object at 0x102a99040>>
+                                               #ag ino ejea ko ni   print(attribute.__self__)   ino mide:   <tracking.views.HomeAPIView object at 0x1051eb230>       
+            return (type (attribute.__self__).__module__ + '.' + type(attribute.__self__).__name__)
+
+        except AttributeError:
+            return None
+        
+        
+
+    def _get_view_method(self,request):
+        if hasattr(self,'action'):
+            return self.action or None
+        return request.method.lower()
+    
+    
+    
+    def _get_path(self,request):
+        return (request.path[:app_settings.PATH_LENGTH])
+        
+        
+        
+    def _get_user(self,request):
+        user=request.user
+        if user.is_anonymous:
+            return None
+        else:
+            return user    
+
+    def _get_response_ms(self,):
+        '''
+            baraye gereftane time resonse bayad zamani k request ferestade
+            shode ro az time hamin hala kam konim ye adadi bdast miad 
+            00:00:00:000123 intorie bayad ham inke intigeresh konim ham inke 
+            fghat sanie sho mikhaym ke taze onam bayad chon milisanie mikhaym 
+            bayad hamoon sanie ash ro ham dar 1000 zarb konim.
+            bazi vaghta momkene b bug bokhore javab ro bhmon manfi bede vase 
+            hamin az in estefade mikonim max(response_ms,0)  
+            yani age response_ms ye adade mosbat bod ye beyne on adad mosbate 
+            va 0 kodom bozorgtare? khob maloome response_ms valiiii age response_ms 
+            adade manfibod beyen on va 0 kodom bozorgtare? 0 pas hichvaght hata ag be
+            bug ham bokhorim gharar nist adade manfi bhmoon bargardoone
+        '''
+        
+        response_timedelta=now() - self.log['requested_at']
+        response_ms= int(response_timedelta.total_seconds()*1000)      
+        return max(response_ms,0)  
