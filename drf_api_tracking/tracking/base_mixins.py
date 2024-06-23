@@ -3,15 +3,15 @@ import ipaddress
 from tracking.app_settings import app_settings
 import traceback
 import logging
-
+import ast
 
 
 logger=logging.getLogger(__name__)         #vase neveshtane log. bad ghabl az inke self.handle_log() ejra beshe y try except mizarim ag exception i etefagh oftad tooye log file betone zakhirash bokone.
 
 class BaseLoggingMixin:
-    
+    sensitive_fields={}
     logging_methods='__all__'                  #vaseye entekhabe noe method e http
-    
+    CLEANED_SUBSTITUTE ='*****************'
     '''
         method initial ke in zire yeki ag method hay aslie class e APIView
         hast ke ghabl az inke request ersal beshe ejra mishe; ma omadim
@@ -57,6 +57,15 @@ class BaseLoggingMixin:
         response= super().finalize_response(request, response, *args, **kwargs)
         if self.should_log(request,response):
             user=self._get_user(request)
+            
+            if response.streaming:    #age dashti be karbar stream mikardi nemikhad chiizi zakhire bokoni
+                rendered_content= None
+            elif hasattr(response,'rendered_content'):   #age response parametri tahte onvane rendered_content dasht mifahmim k dare HTML load mikone. va hamon safe mishe response moon.
+                rendered_content=response.rendered_content
+            else:
+                rendered_content=response.getValue()     # dar gheyre in sorat hay bala mifahmim az noe json ya noe digei hastesh. hala hamin rendered_content haviye etelaate response mon hastesh va bayad b onvane moteghayer befrestimesh be _cleande_data ke biad vase ma taro tamizesh bokone va inke bezaratesh tooye 'response' bakhshe log 
+                
+                
             self.log.update({
                 'remote_addr': self._get_ip_address(request) ,
                 'view':self._get_view_name(request),
@@ -68,6 +77,8 @@ class BaseLoggingMixin:
                 'username_persistent': user.get_username() if user else 'Anonymous',
                 'response_ms':self._get_response_ms(),
                 'status_code':response.status_code,
+                'query_params':self._clean_data(request.query_params.dict()),  # hamin in `request.query_params.dict()` kaafii boodesh ke behemon query parametr haro tahvil bede. vali miaym mizarimesh tooye clean data k etelaate hasasesho dar biare va baghiasho behemon bede betoim baghiasho too modelamoon zakhire konim. 
+                'response': self._clean_data(rendered_content)
             })
             try:
                 self.handle_log()
@@ -189,4 +200,40 @@ class BaseLoggingMixin:
     '''    
     
     
-    
+    def _clean_data(self,data):
+        if isinstance(data,list):      #age data i k dare miad vasamon list bood dakhele on data halghe mixzanam va taktak mifrestameshon b clean_data
+            return [self._clean_data(d) for d in data]
+        
+        if isinstance(data,dict):
+            SENSETIVE_FIELDS={'password','signature','api', 'token','secret'}
+            '''
+                inja on sensitive field i ke class variable hastesh va be sorate
+                default y dict khali entekhabesh kardim va karbar bayad biad overridesh
+                kone vagghti dare az in module estefade kone yani biad y variable sesitive_fields
+                tarf kone va dakhelesh chandta parametri k doost nadare save beshan va az nazaresh
+                hasas hastan ro mizare. bad ma ham miaym y seeri khodemon sensitive ro b sorate default
+                taarif mikonim inja b sorate SENSETIVE_FIELDS ke bad az on miaym SENSETIVE_FIELDS ro ba 
+                sensitive_fields(onai k karbar ferestadae) merge mikonim va tak take azaye sensitive field 
+                ro aval lowercase mikonim baadesh ezafe mikonim be soorate eshteraki too SENSETIVE_FIELDS.
+                
+                
+            '''
+            SENSETIVE_FIELDS = SENSETIVE_FIELDS | {field.lower() for field in self.sensitive_fields}
+            
+            for key , value in data.items():
+                try:
+                    value=ast.literal_eval(value)
+                    #lteral eval() dakhele etelaate shoma migarde va age syntax python i
+                    # toosh vojod dashte bashe ono mikeshe miare biron
+                except(ValueError,SyntaxError):
+                    pass    
+                
+                if isinstance(value, (list,dict)):
+                    data[key]=self._clean_data(value)
+                
+                
+                if key.lower() in SENSETIVE_FIELDS:
+                    data[key] = self.CLEANED_SUBSTITUTE
+                    
+                
+        return data        
