@@ -12,6 +12,7 @@ class BaseLoggingMixin:
     sensitive_fields={}
     logging_methods='__all__'                  #vaseye entekhabe noe method e http
     CLEANED_SUBSTITUTE ='*****************'
+    
     '''
         method initial ke in zire yeki ag method hay aslie class e APIView
         hast ke ghabl az inke request ersal beshe ejra mishe; ma omadim
@@ -25,9 +26,13 @@ class BaseLoggingMixin:
         mikonim chonke karbar miad darkhastesho ersal mikone bad ke pasokh
         bargardonede shod az rooye on pasokh ip karbar ro migirim va tooye
         `self.log` save esh mikonim.
-        
     '''
     
+    def __init__(self,*args,**kwargs):
+        assert isinstance(self.CLEANED_SUBSTITUTE,str),'CLEANED_SUBSTITUTE must be a string.'
+        return super().__init__(*args,**kwargs)
+    
+        
     def initial(self, request, *args, **kwargs):
         self.log={'requested_at':now(),}
         return super().initial(request, *args, **kwargs)
@@ -201,6 +206,7 @@ class BaseLoggingMixin:
     
     
     def _clean_data(self,data):
+        
         if isinstance(data,list):      #age data i k dare miad vasamon list bood dakhele on data halghe mixzanam va taktak mifrestameshon b clean_data
             return [self._clean_data(d) for d in data]
         
@@ -215,7 +221,6 @@ class BaseLoggingMixin:
                 taarif mikonim inja b sorate SENSETIVE_FIELDS ke bad az on miaym SENSETIVE_FIELDS ro ba 
                 sensitive_fields(onai k karbar ferestadae) merge mikonim va tak take azaye sensitive field 
                 ro aval lowercase mikonim baadesh ezafe mikonim be soorate eshteraki too SENSETIVE_FIELDS.
-                
                 
             '''
             SENSETIVE_FIELDS = SENSETIVE_FIELDS | {field.lower() for field in self.sensitive_fields}
