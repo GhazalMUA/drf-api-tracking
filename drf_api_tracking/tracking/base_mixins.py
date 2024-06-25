@@ -5,8 +5,7 @@ import traceback
 import logging
 import ast
 
-
-logger=logging.getLogger(__name__)         #vase neveshtane log. bad ghabl az inke self.handle_log() ejra beshe y try except mizarim ag exception i etefagh oftad tooye log file betone zakhirash bokone.
+logger=logging.getLogger( __name__)         #vase neveshtane log. bad ghabl az inke self.handle_log() ejra beshe y try except mizarim ag exception i etefagh oftad tooye log file betone zakhirash bokone.
 
 class BaseLoggingMixin:
     sensitive_fields={}
@@ -28,14 +27,34 @@ class BaseLoggingMixin:
         `self.log` save esh mikonim.
     '''
     
+    
+    
+    
+    
     def __init__(self,*args,**kwargs):
+        '''
+            inja miaym check mikonim k moteghayere CLEANED_SUBSTITUTE ro age
+            karbar khast khodesh override bokone va gheyre string neveshte bodesh
+            behesh khata bede hatmna bayad ebaratesh tooye double coutation bashe
+            va b sorate string zakhire beshe.
+        '''
         assert isinstance(self.CLEANED_SUBSTITUTE,str),'CLEANED_SUBSTITUTE must be a string.'
         return super().__init__(*args,**kwargs)
+    
+    
     
         
     def initial(self, request, *args, **kwargs):
         self.log={'requested_at':now(),}
+        print("Initial method called")  # Debugging line
+
+        if not getattr(self, 'decode_request_body' , app_settings.DECODE_REQUEST_BODY):
+            self.log['data']=''
+        else:
+            self.log['data']=request.data
         return super().initial(request, *args, **kwargs)
+    
+    
     
     
     def handle_exception(self, exc):
@@ -53,12 +72,19 @@ class BaseLoggingMixin:
         kone ya harchize digei....
         
         """
+        print("Handle exception called")  # Debugging line
+
         response= super().handle_exception(exc)
         self.log['errors']=traceback.format_exc()
         return response
     
     
+    
+    
+    
     def finalize_response(self, request, response, *args, **kwargs):
+        print("Finalize response called")  # Debugging line
+
         response= super().finalize_response(request, response, *args, **kwargs)
         if self.should_log(request,response):
             user=self._get_user(request)
@@ -68,7 +94,7 @@ class BaseLoggingMixin:
             elif hasattr(response,'rendered_content'):   #age response parametri tahte onvane rendered_content dasht mifahmim k dare HTML load mikone. va hamon safe mishe response moon.
                 rendered_content=response.rendered_content
             else:
-                rendered_content=response.getValue()     # dar gheyre in sorat hay bala mifahmim az noe json ya noe digei hastesh. hala hamin rendered_content haviye etelaate response mon hastesh va bayad b onvane moteghayer befrestimesh be _cleande_data ke biad vase ma taro tamizesh bokone va inke bezaratesh tooye 'response' bakhshe log 
+                rendered_content=response.data     # dar gheyre in sorat hay bala mifahmim az noe json ya noe digei hastesh. hala hamin rendered_content haviye etelaate response mon hastesh va bayad b onvane moteghayer befrestimesh be _cleande_data ke biad vase ma taro tamizesh bokone va inke bezaratesh tooye 'response' bakhshe log 
                 
                 
             self.log.update({
@@ -88,12 +114,15 @@ class BaseLoggingMixin:
             try:
                 self.handle_log()
             except Exception:
-                logger.exception('Loggin API call raise  exception.')
+                logger.exception('Logging API call raise  exception.')
         return response
+    
+    
     
     
     def _handle_log(self):
         raise NotImplementedError
+    
     
     
     
@@ -106,7 +135,7 @@ class BaseLoggingMixin:
             az vpn estefade mikone emkanesh hast k taghir bokone va ip proxy y hamon vpn 
             ro neshoon mide. ye header dg darim b esme HTTP_X_FORWARDED_FOR hastesh vali tooye
             in dg faghat ip address vagheiye karbar namayesh dade mishe hata ag az vpn estefade kone 
-            ava address vagheisho neshoon mide bad az on ip haye proxy hayi k beheshon karbar vasle ro
+            va address vagheisho neshoon mide bad az on ip haye proxy hayi k beheshon karbar vasle ro
             be tartib bad az ip aslish minevise va nokte inke in ip ha ba comma tooye in az ham dg joda mishan. 
             age karbar az proxy ya vpn estefade nakone, REMOTE_ADDR  va HTTP_X_FORWARDED_FOR  baaham dige barabaar mishan.
         '''
@@ -141,6 +170,8 @@ class BaseLoggingMixin:
     """               
             
    
+   
+   
     def _get_view_name(self,request):
         method = request.method.lower()    #getting http method
         try:
@@ -154,6 +185,7 @@ class BaseLoggingMixin:
             return None
         
         
+        
 
     def _get_view_method(self,request):
         if hasattr(self,'action'):
@@ -162,17 +194,18 @@ class BaseLoggingMixin:
     
     
     
+    
+    
     def _get_path(self,request):
         return (request.path[:app_settings.PATH_LENGTH])
         
-        
+    
+    
         
     def _get_user(self,request):
         user=request.user
-        if user.is_anonymous:
-            return None
-        else:
-            return user    
+        return None if user.is_anonymous else user
+
 
     def _get_response_ms(self,):
         '''
@@ -195,6 +228,7 @@ class BaseLoggingMixin:
     
     
     
+    
     def should_log(self,request,response):
         return (
             self.logging_methods=='__all__' or request.method in self.logging_methods
@@ -205,8 +239,13 @@ class BaseLoggingMixin:
     '''    
     
     
+    
+    
     def _clean_data(self,data):
-        
+        print("Cleaning data:", data)  # Debugging line
+        if isinstance(data,bytes):
+            data=data.decode(errors='replace')
+
         if isinstance(data,list):      #age data i k dare miad vasamon list bood dakhele on data halghe mixzanam va taktak mifrestameshon b clean_data
             return [self._clean_data(d) for d in data]
         
@@ -240,5 +279,6 @@ class BaseLoggingMixin:
                 if key.lower() in SENSETIVE_FIELDS:
                     data[key] = self.CLEANED_SUBSTITUTE
                     
-                
+        print("Cleaned data:", data)  # Debugging line
+        
         return data        

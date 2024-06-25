@@ -13,4 +13,4 @@ class HomeAPIView(LoggingMixin,APIView):
     sensitive_fields ={'pass'}      
     def get(self,request):
         return Response('hello there')
-    
+  

@@ -19,7 +19,7 @@ class BaseAPIRequestLog(models.Model):
     errors=models.TextField(null=True,blank=True)
     status_code=models.PositiveIntegerField(null=True,blank=True,db_index=True)
     
-    
+   
     class Meta:
         abstract = True
         verbose_name= ' API request log'
