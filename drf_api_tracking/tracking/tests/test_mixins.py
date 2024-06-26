@@ -1,8 +1,9 @@
 from rest_framework.test import APITestCase , APIRequestFactory
 from tracking.models import APIRequestLog
 from .views import MockLoggingView
-from django.test import TestCase, override_settings
+from django.test import TestCase, override_settings , RequestFactory
 from tracking.models import APIRequestLog
+from django.urls import reverse
 
 
 '''
@@ -25,7 +26,24 @@ class TestLoggingMixin(APITestCase):
         self.assertEqual(APIRequestLog.objects.all().count(),0)
         
         
+        
+    #inja khodam behesh query parameters ro testi dadam bbinm kar mikone ya na k didam kar kard    
     def test_logging_create_log(self):
         self.client.get('/with_logging/',{'key1':'value1'})    
         self.assertEqual(APIRequestLog.objects.all().count(),1)
     
+    
+    
+    def test_path(self):
+        self.client.get('/with_logging/')
+        log = APIRequestLog.objects.first()    # miad avalin record i k save shode tooye modele APIRequest ro mirize tooye moteghayere log. 
+        self.assertEqual(log.path , '/with_logging/')   # tooye modele APIRequest, miad field e path esh ro check mikone va ba in url i tooye client moshakhas kardim moghayese mikonim.
+        
+        
+        
+    def test_log_ip_remote(self):
+        rf = RequestFactory().get('/with_logging/')
+        rf.META['REMOTE_ADDR']= '127.0.0.9'
+        MockLoggingView.as_view()(rf).render()
+        log=APIRequestLog.objects.first()
+        self.assertEqual(log.remote_addr,'127.0.0.9')
