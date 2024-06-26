@@ -243,6 +243,7 @@ class BaseLoggingMixin:
     
     def _clean_data(self,data):
         print("Cleaning data:", data)  # Debugging line
+        
         if isinstance(data,bytes):
             data=data.decode(errors='replace')
 
