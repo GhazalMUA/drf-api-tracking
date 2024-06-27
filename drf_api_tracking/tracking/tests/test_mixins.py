@@ -3,10 +3,14 @@ from tracking.models import APIRequestLog
 from .views import MockLoggingView
 from django.test import TestCase, override_settings 
 from tracking.models import APIRequestLog
-from django.urls import reverse
-
 
 '''
+
+    Mocking requests and responses in tests allows you to simulate
+    various scenarios without the need for actual HTTP requests.
+    This makes tests faster and more reliable.
+
+
     midooniim ke vaghti ye urls.py tooye app haye django darim hatman 
     bayad in urls.py ro be url aslie barname k tppye project django 
     hastesh mparefi bokonim va inke ba dastoore `include` in kar ro
@@ -42,6 +46,18 @@ class TestLoggingMixin(APITestCase):
         
         
     def test_log_ip_remote(self):
+        '''
+        APIRequestFactory: This is a utility provided by Django REST Framework to create mock requests for testing.
+
+        .get('urlpath'): This method creates a GET request to the `urlpath` endpoint.
+
+        request.META: This is a dictionary-like object that contains all the HTTP headers sent with the request. META is a standard attribute for request objects in Django.
+
+        (request): This passes the mock request object to the view for processing.
+        
+        .render(): This ensures that the response is fully rendered. Rendering the response is important in testing because some processing might only occur during this phase.
+        '''
+        
         request = APIRequestFactory().get('/with_logging/')
         request.META['REMOTE_ADDR']= '127.0.0.9'
         MockLoggingView.as_view()(request).render()
@@ -70,11 +86,34 @@ class TestLoggingMixin(APITestCase):
         
         
     def test_log_ip_remote_v6(self):
-        request=APIRequestFactory().get('/logging/')    
+        request=APIRequestFactory().get('/with_logging/')    
         request.META['REMOTE_ADDR']='2001:0db8:85a3:000:0000:8a2e:0370:7334'
         MockLoggingView.as_view()(request).render()
         log= APIRequestLog.objects.first()
         self.assertEqual(log.remote_addr, '2001:db8:85a3::8a2e:370:7334')
 
+
+
+#in vase moghheiye k ip male khodemone(local)         
+    def test_log_ip_remote_v6_loopback(self):   
+        request= APIRequestFactory().get('/with_logging/')
+        request.META['REMOTE_ADDR']='::1'
+        MockLoggingView.as_view()(request).render()
+        log= APIRequestLog.objects.first()
+        self.assertEqual(log.remote_addr, '::1')
+
+
+    def test_log_ip_remote_v6_with_port(self):
+        request= APIRequestFactory().get('/with_logging/')
+        request.META['REMOTE_ADDR']='[::1]:7000'        
+        MockLoggingView.as_view()(request).rennder()
+        log=APIRequestLog.objects.first()
+        self.assertEqual(log.remote_addr,'::1')
         
-        
+    
+    def test_log_ip_xforwarded(self):
+        request=APIRequestFactory().get('/with_logging/')
+        request.META['HTTP_X_FORWARDED_FOR']='127.0.0.7'
+        MockLoggingView.as_view()(request).render()
+        log=APIRequestLog.objects.first()
+        self.assertEqual(log.remote_addr,'127.0.0.7')
