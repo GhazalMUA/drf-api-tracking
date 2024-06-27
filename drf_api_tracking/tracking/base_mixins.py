@@ -163,12 +163,12 @@ class BaseLoggingMixin:
                 return str(ipaddress.ip_address(addr))         
             except:
                 pass   
-                                          
+        return ipaddr                                   
     """
         HTTP_X_FORWARDED_FOR ----->  proxy=>   real_ip , 1st_proxy_ip , 2nd_proxy_ip , last_proxy_id
         REMOTE_ADDR ----->   proxy=>   ip proxy
     """               
-            
+           
    
    
    

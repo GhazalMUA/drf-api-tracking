@@ -1,7 +1,7 @@
 from rest_framework.test import APITestCase , APIRequestFactory
 from tracking.models import APIRequestLog
 from .views import MockLoggingView
-from django.test import TestCase, override_settings , RequestFactory
+from django.test import TestCase, override_settings 
 from tracking.models import APIRequestLog
 from django.urls import reverse
 
@@ -42,8 +42,39 @@ class TestLoggingMixin(APITestCase):
         
         
     def test_log_ip_remote(self):
-        rf = RequestFactory().get('/with_logging/')
-        rf.META['REMOTE_ADDR']= '127.0.0.9'
-        MockLoggingView.as_view()(rf).render()
+        request = APIRequestFactory().get('/with_logging/')
+        request.META['REMOTE_ADDR']= '127.0.0.9'
+        MockLoggingView.as_view()(request).render()
         log=APIRequestLog.objects.first()
         self.assertEqual(log.remote_addr,'127.0.0.9')
+        
+        
+    
+    def test_log_ip_remote_list(self):
+        request=APIRequestFactory().get('/with_logging/')  
+        request.META['REMOTE_ADDR']='127.0.0.9, 127.0.0.5, 127.0.0.4'
+        MockLoggingView.as_view()(request).render()
+        log=APIRequestLog.objects.first()
+        self.assertEqual(log.remote_addr,'127.0.0.9')
+        
+        
+        
+    def test_log_ip_remote_v4_with_port(self):
+        request=APIRequestFactory().get('/with_logging/')
+        request.META['REMOTE_ADDR']='127.0.0.7:6640'
+        MockLoggingView.as_view()(request).render()
+        log = APIRequestLog.objects.first()
+        self.assertEqual(log.remote_addr, '127.0.0.7')
+        
+        
+        
+        
+    def test_log_ip_remote_v6(self):
+        request=APIRequestFactory().get('/logging/')    
+        request.META['REMOTE_ADDR']='2001:0db8:85a3:000:0000:8a2e:0370:7334'
+        MockLoggingView.as_view()(request).render()
+        log= APIRequestLog.objects.first()
+        self.assertEqual(log.remote_addr, '2001:db8:85a3::8a2e:370:7334')
+
+        
+        
