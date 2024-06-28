@@ -261,7 +261,8 @@ class BaseLoggingMixin:
                 ro aval lowercase mikonim baadesh ezafe mikonim be soorate eshteraki too SENSETIVE_FIELDS.
                 
             '''
-            SENSETIVE_FIELDS = SENSETIVE_FIELDS | {field.lower() for field in self.sensitive_fields}
+            if self.sensitive_fields:
+                SENSETIVE_FIELDS = SENSETIVE_FIELDS | {field.lower() for field in self.sensitive_fields}
             
             for key , value in data.items():
                 try:

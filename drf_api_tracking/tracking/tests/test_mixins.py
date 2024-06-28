@@ -5,6 +5,7 @@ from django.test import TestCase, override_settings
 from tracking.models import APIRequestLog
 from django.contrib.auth.models import User
 import ast
+from tracking.mixins import BaseLoggingMixin
 '''
     Use self.client when you want to test how the application handles
     a request end-to-end, including routing, middleware, and view rendering.
@@ -190,3 +191,24 @@ class TestLoggingMixin(APITestCase):
         self.client.get('/with_logging/' , {'key1':'value1' , 'key2':'value2'})  
         log=APIRequestLog.objects.first()
         self.assertEqual(ast.literal_eval(log.query_params) , {'key1':'value1' , 'key2':'value2'})
+        #chonke besorate string hamechiz zakhire mishe az ast.literal_eval() estefade mikonim k code pythonie tooye string ro vasamon biare
+        
+        
+    
+    def test_log_params_cleaned_from_personal_list(self):
+        '''
+            tooye on mixin moon vase query_params miomadim midadimesh be _cleaned_data ke vasamon 
+            check kone bebine etelaate hasas toosh nabashe ag ham etelaate hasas toosh bod vasamon 
+            on setareharo bezare setare haram tahte onvene clean_substitute variable ye string i
+            ke toosh setarast save karde boodim
+        '''    
+        clst=BaseLoggingMixin.CLEANED_SUBSTITUTE 
+        self.client.get('/sensitive_fields_logging/',{'api':'12344444' , 'my_field':'fresh' , 'ghazalmua':'12345'})
+        log=APIRequestLog.objects.first()
+        self.assertEqual(ast.literal_eval(log.query_params) , {
+                                             'api':clst ,
+                                             'my_field': clst , 
+                                             'ghazalmua':'12345' ,
+                                                            
+        })
+        
