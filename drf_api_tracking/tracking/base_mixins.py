@@ -111,10 +111,12 @@ class BaseLoggingMixin:
                 'query_params':self._clean_data(request.query_params.dict()),  # hamin in `request.query_params.dict()` kaafii boodesh ke behemon query parametr haro tahvil bede. vali miaym mizarimesh tooye clean data k etelaate hasasesho dar biare va baghiasho behemon bede betoim baghiasho too modelamoon zakhire konim. 
                 'response': self._clean_data(rendered_content)
             })
+            
             try:
                 self.handle_log()
             except Exception:
                 logger.exception('Logging API call raise  exception.')
+                
         return response
     
     
@@ -229,17 +231,13 @@ class BaseLoggingMixin:
     
     
     
+        # vaghti kasi az module base_mixins.py dare estefade mikone khodesh mitone biad in method should_log()
+        # ro override bokone va vasash har sharti k doost dare ro bezare.
+          
     def should_log(self,request,response):
-        return (
-            self.logging_methods=='__all__' or request.method in self.logging_methods
-        )
-    '''
-        vaghti kasi az module base_mixins.py dare estefade mikone khodesh mitone biad in method should_log()
-        ro override bokone va vasash har sharti k doost dare ro bezare.
-    '''    
-    
-    
-    
+        return (self.logging_methods == '__all__' or request.method in self.logging_methods)
+ 
+
     
     def _clean_data(self,data):
         print("Cleaning data:", data)  # Debugging line

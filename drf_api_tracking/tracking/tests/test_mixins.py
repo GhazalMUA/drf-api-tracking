@@ -3,8 +3,14 @@ from tracking.models import APIRequestLog
 from .views import MockLoggingView
 from django.test import TestCase, override_settings 
 from tracking.models import APIRequestLog
-
+from django.contrib.auth.models import User
+import ast
 '''
+    Use self.client when you want to test how the application handles
+    a request end-to-end, including routing, middleware, and view rendering.
+    Use APIRequestFactory when you want to test specific view logic in isolation 
+    and need more control over the request setup.
+
 
     Mocking requests and responses in tests allows you to simulate
     various scenarios without the need for actual HTTP requests.
@@ -131,3 +137,56 @@ class TestLoggingMixin(APITestCase):
         self.client.get('/with_logging/')    
         log=APIRequestLog.objects.first()
         self.assertEqual(log.host, 'testserver')
+        
+        
+    def test_log_method(self):
+        self.client.get('/with_logging/')
+        log=APIRequestLog.objects.first()
+        self.assertEqual(log.method, 'GET')
+        
+    
+    def test_log_status(self):
+        self.client.get('/with_logging/')
+        log=APIRequestLog.objects.first()
+        self.assertEqual(log.status_code,200)    
+        
+        
+        
+    def test_login_explicit(self):
+        self.client.get('/explicit_logging/')    
+        self.client.post('/explicit_logging/')
+        log=APIRequestLog.objects.all().count()
+        self.assertEqual(log, 1)
+        
+        
+    
+    def test_custom_check_logging(self):
+        self.client.get('custom_check_logging/') 
+        self.client.post('custom_check_logging/')
+        log=APIRequestLog.objects.all().count()   
+        self.assertEqual(log, 0)
+        
+        
+        
+    def log_annon_user(self):
+        self.client.get('/with_logging/')
+        log=APIRequestLog.objects.first()
+        self.assertEqual(log.user,None)
+        
+        
+     
+    def test_log_auth_user(self):
+        User.objects.create_user(username='myname' , password='mypass')
+        usermon=User.objects.get(username='myname')
+        self.client.login(username='myname' , password='mypass')
+        self.client.get('/session_auth_logging/')
+        log=APIRequestLog.objects.first()
+        self.assertEqual(log.user , usermon )
+        
+        
+        
+        
+    def test_log_params(self):
+        self.client.get('/with_logging/' , {'key1':'value1' , 'key2':'value2'})  
+        log=APIRequestLog.objects.first()
+        self.assertEqual(ast.literal_eval(log.query_params) , {'key1':'value1' , 'key2':'value2'})
