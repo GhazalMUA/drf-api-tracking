@@ -6,6 +6,7 @@ from tracking.models import APIRequestLog
 from django.contrib.auth.models import User
 import ast
 from tracking.mixins import BaseLoggingMixin
+from unittest import mock
 '''
     Use self.client when you want to test how the application handles
     a request end-to-end, including routing, middleware, and view rendering.
@@ -215,6 +216,30 @@ class TestLoggingMixin(APITestCase):
         
         
     def test_invalid_cleaned_substitute_fails(self):
+        '''
+            miaym check mikonim hatman on variable clean_substitue i ke karbar vared karde be
+            sorate string bashe va chon in code shart ro ba assert neveshte bodimesh tooye base_mixins,
+            bayad assertionerror behesh bedim. nokteye badi inke toye view i ke be invalid_cleaned_substitute 
+            vasle ma ye clean_substitude intiger dadim k shart ro naghz kone vasde hamin test esh injri neveshte mishe
+        '''
         with self.assertRaises(AssertionError):    
             self.client.get('/invalid_cleaned_substitute/')
         
+
+
+
+
+
+
+
+        '''
+            MOCK baraye shabih sazie amaliati hastesh ke nemikhaym vaghean etefagh biofte.
+            vaseye delete kardane file ya upload kardane file
+        '''
+    @mock.patch('tracking.models.APIRequestLog.save')
+    def test_log_doesnt_prevent_api_call_if_log_savefails(self , mock_save):
+        mock_save.side_effects = 'db_failure'
+        response=self.client.get('/with_logging/')
+        tedad=APIRequestLog.objects.all().count()
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(tedad,0)
