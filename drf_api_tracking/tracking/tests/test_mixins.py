@@ -212,3 +212,9 @@ class TestLoggingMixin(APITestCase):
                                                             
         })
         
+        
+        
+    def test_invalid_cleaned_substitute_fails(self):
+        with self.assertRaises(AssertionError):    
+            self.client.get('/invalid_cleaned_substitute/')
+        
