@@ -232,14 +232,31 @@ class TestLoggingMixin(APITestCase):
 
 
 
+
+
+
+
         '''
             MOCK baraye shabih sazie amaliati hastesh ke nemikhaym vaghean etefagh biofte.
             vaseye delete kardane file ya upload kardane file
         '''
     @mock.patch('tracking.models.APIRequestLog.save')
     def test_log_doesnt_prevent_api_call_if_log_savefails(self , mock_save):
-        mock_save.side_effects = 'db_failure'
-        response=self.client.get('/with_logging/')
-        tedad=APIRequestLog.objects.all().count()
-        self.assertEqual(response.status_code,200)
-        self.assertEqual(tedad,0)
+        '''
+            ba on decorator i ke mizarim balaye function moshakhas mikonim k bere 
+            too app tracking tooye file modeles.py va modele APIRequestLog ro biare
+            va method save ro mock kone ke dige etefagh nayofte kolan hadafe in function
+            mon ine ke age yemoghe mixin mon kar nakard etelaat eshteabh sabt nakone.
+            baraye moshakhas kardane Exceptionha az `side_effect` estefade mikonim.
+            vaghti miaym `side_effect` moshakhas mikonim yani vaghti save etefagh
+            oftad Exception etefagh biofte ba in payam k `db failure`
+            
+        '''
+        mock_save.side_effect = Exception('db failure')
+        response = self.client.get('/with_logging/')
+        tedad = APIRequestLog.objects.all().count()
+        self.assertEqual(response.status_code , 200)
+        self.assertEqual(tedad , 0)
+        
+        
+        
